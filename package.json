@@ -1,0 +1,57 @@
+{
+  "name": "liran",
+  "version": "1.0.0",
+  "description": "An on-premise plug and play natural language interface",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "liran": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bolu1/liran.git"
+  },
+  "keywords": [],
+  "author": "Bolu boluadetifa@gmail.com",
+  "license": "MIT",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Bolu1/liran/issues"
+  },
+  "homepage": "https://github.com/Bolu1/liran#readme",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.11.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "jest": "^30.3.0",
+    "prettier": "^3.8.3",
+    "ts-jest": "^29.4.9",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "ioredis": "^5.10.1",
+    "mysql2": "^3.11.0",
+    "node-llama-cpp": "^3.18.1",
+    "pg": "^8.13.0",
+    "yaml": "^2.8.3"
+  }
+}
