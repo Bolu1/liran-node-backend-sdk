@@ -98,7 +98,16 @@ export class LiranSDK implements ILiranSDK {
     const allowedTools = resolveAllowedTools(this.config, role);
     const allowedToolNames = getAllowedToolNames(this.config, role);
     const intentPrompt = buildIntentPrompt(this.config, allowedTools, history, message);
-    const intentResult = await this.model.parseIntent(intentPrompt, message);
+
+    const toolNames = allowedTools.map((t) => t.name);
+    const toolParams = new Map(
+      allowedTools.map((t) => [
+        t.name,
+        t.params.map((p) => ({ name: p.name, type: p.type as 'string' | 'number' | 'boolean', required: p.required })),
+      ]),
+    );
+
+    const intentResult = await this.model.parseIntent(intentPrompt, message, toolNames, toolParams);
     return { intentResult, allowedToolNames };
   }
 
@@ -110,6 +119,7 @@ export class LiranSDK implements ILiranSDK {
     response: string,
     intentResult: ToolCallResult,
     startTime: number,
+    rawToolData?: unknown,
   ): Promise<void> {
     const { ttl } = this.config.session;
     const now = Date.now();
@@ -119,6 +129,14 @@ export class LiranSDK implements ILiranSDK {
       { role: 'user', content: message, timestamp: now },
       ttl,
     );
+
+    if (rawToolData !== undefined && intentResult.tool !== '__none__') {
+      await this.session.appendMessage(
+        sessionId, userId, role,
+        { role: 'tool_result', content: JSON.stringify(rawToolData), timestamp: now, toolName: intentResult.tool },
+        ttl,
+      );
+    }
 
     await this.session.appendMessage(
       sessionId, userId, role,
@@ -151,16 +169,17 @@ export class LiranSDK implements ILiranSDK {
       const { intentResult, allowedToolNames } = await this.resolveIntent(message, role, history);
 
       let response: string;
+      let rawData: unknown;
 
       if (intentResult.tool === '__none__') {
         response = intentResult.message ?? "I'm not sure how to help with that.";
       } else {
-        const rawData = await this.router.execute(intentResult.tool, intentResult.args, allowedToolNames);
+        rawData = await this.router.execute(intentResult.tool, intentResult.args, allowedToolNames);
         const formatPrompt = buildFormatPrompt(this.config, intentResult.tool, rawData, message, history);
         response = await this.model.formatResponse(formatPrompt, rawData);
       }
 
-      await this.persistTurn(sessionId, userId, role, message, response, intentResult, startTime);
+      await this.persistTurn(sessionId, userId, role, message, response, intentResult, startTime, rawData);
       return response;
     } catch (err) {
       console.error('[liran] chat() error:', err);
@@ -238,6 +257,7 @@ export class LiranSDK implements ILiranSDK {
       accumulated.join(''),
       intentResult,
       startTime,
+      rawData,
     );
   }
 

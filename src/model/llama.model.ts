@@ -11,19 +11,11 @@ import {
 import { ModelConfig } from '../interfaces/types.js';
 import { ModelError } from '../utils/errors.js';
 import { MODEL_URIS } from '../utils/constants.js';
-import { IModelLoader, ToolCallResult } from './model.interfaces.js';
+import { IModelLoader, ToolCallResult, ToolParamSchema } from './model.interfaces.js';
 import { detectModelSwitch, writeModelState } from './model.state.js';
 
 const MODELS_DIR = path.join(os.homedir(), '.liran-sdk', 'models');
 
-const TOOL_CALL_SCHEMA = {
-  type: 'object' as const,
-  properties: {
-    tool: { type: 'string' as const },
-    args: { type: 'object' as const },
-  },
-  required: ['tool', 'args'],
-};
 
 export class LlamaModelLoader implements IModelLoader {
   private config: ModelConfig;
@@ -123,27 +115,85 @@ export class LlamaModelLoader implements IModelLoader {
     }
   }
 
-  async parseIntent(systemPrompt: string, userMessage: string): Promise<ToolCallResult> {
+  async parseIntent(
+    systemPrompt: string,
+    userMessage: string,
+    toolNames: string[],
+    toolParams: Map<string, ToolParamSchema[]>,
+  ): Promise<ToolCallResult> {
     return this.enqueue(async () => {
       if (!this.llama) {
         throw new ModelError('Model not loaded. Call load() first.');
       }
 
-      return this.withSession(async (session) => {
-        const grammar = await this.llama!.createGrammarForJsonSchema(TOOL_CALL_SCHEMA);
+      // Pass 1: extract tool name
+      const toolSchema = {
+        type: 'object' as const,
+        properties: {
+          tool: { type: 'string' as const, enum: ['__none__', ...toolNames] },
+          message: { type: 'string' as const },
+        },
+        required: ['tool'],
+      };
 
-        try {
-          const raw = await session.prompt(`${systemPrompt}\n\n${userMessage}`, {
-            grammar,
-            temperature: this.config.temperature,
-          });
-          return JSON.parse(raw) as ToolCallResult;
-        } catch (err) {
-          throw new ModelError(
-            `Intent parsing failed: ${err instanceof Error ? err.message : String(err)}`,
-          );
+      let toolName: string;
+
+      await this.withSession(async (session) => {
+        const grammar = await this.llama!.createGrammarForJsonSchema(toolSchema);
+        const raw = await session.prompt(`${systemPrompt}\n\nUser: ${userMessage}`, {
+          grammar,
+          temperature: this.config.temperature,
+        });
+        console.log('[liran] pass1 raw output:', raw);
+        const parsed = JSON.parse(raw) as { tool: string; message?: string };
+
+        if (parsed.tool === '__none__') {
+          toolName = '__none__';
+          return { tool: '__none__', args: {}, message: parsed.message };
         }
+
+        toolName = parsed.tool;
       });
+
+      if (toolName! === '__none__') {
+        return { tool: '__none__', args: {} };
+      }
+
+      // Pass 2: extract args for the resolved tool
+      const params = toolParams.get(toolName!) ?? [];
+
+      if (params.length === 0) {
+        return { tool: toolName!, args: {} };
+      }
+
+      const properties: Record<string, { type: 'string' | 'number' | 'boolean' }> = {};
+      const required: string[] = [];
+      for (const p of params) {
+        properties[p.name] = { type: p.type as 'string' | 'number' | 'boolean' };
+        if (p.required) required.push(p.name);
+      }
+
+      const argsSchema = {
+        type: 'object' as const,
+        properties: properties as Record<string, { type: 'string' } | { type: 'number' } | { type: 'boolean' }>,
+        required,
+      };
+
+      const argsPrompt = `Extract parameter values from the user message for the tool "${toolName!}".\n\nUser message: "${userMessage}"\n\nRespond with ONLY a JSON object containing the parameter values.`;
+
+      let args: Record<string, unknown> = {};
+
+      await this.withSession(async (session) => {
+        const grammar = await this.llama!.createGrammarForJsonSchema(argsSchema);
+        const raw = await session.prompt(argsPrompt, {
+          grammar,
+          temperature: this.config.temperature,
+        });
+        console.log('[liran] pass2 raw output:', raw);
+        args = JSON.parse(raw) as Record<string, unknown>;
+      });
+
+      return { tool: toolName!, args };
     });
   }
 

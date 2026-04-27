@@ -1,7 +1,8 @@
 export interface SessionMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool_result';
   content: string;
   timestamp: number;
+  toolName?: string;
 }
 
 export interface SessionData {

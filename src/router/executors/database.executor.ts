@@ -1,4 +1,4 @@
-import { DatabaseConnection, ToolDefinition } from '../../interfaces/types.js';
+import { DatabaseConnection, ToolDefinition, ToolParam } from '../../interfaces/types.js';
 import { ToolError } from '../../utils/errors.js';
 import { IToolExecutor } from '../router.interfaces.js';
 
@@ -49,13 +49,16 @@ export class DatabaseExecutor implements IToolExecutor {
   private resolveNamedParams(
     sql: string,
     args: Record<string, unknown>,
+    params: ToolParam[],
     dialect: 'postgres' | 'mysql' | 'sqlite',
   ): NamedParamResult {
+    const defaultsMap = new Map(params.map((p) => [p.name, p.default ?? null]));
     const values: unknown[] = [];
     let index = 0;
 
     const rewritten = sql.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_, name: string) => {
-      values.push(args[name] ?? null);
+      const val = args[name] ?? defaultsMap.get(name) ?? null;
+      values.push(val);
       index++;
       return dialect === 'postgres' ? `$${index}` : '?';
     });
@@ -70,17 +73,17 @@ export class DatabaseExecutor implements IToolExecutor {
 
     switch (this.config.driver) {
       case 'postgres':
-        return this.executePostgres(tool.query, args);
+        return this.executePostgres(tool.query, tool.params, args);
       case 'mysql':
-        return this.executeMysql(tool.query, args);
+        return this.executeMysql(tool.query, tool.params, args);
       case 'sqlite':
-        return this.executeSqlite(tool.query, args);
+        return this.executeSqlite(tool.query, tool.params, args);
       default:
         throw new ToolError(`Unsupported database driver: "${this.config.driver}"`);
     }
   }
 
-  private async executePostgres(query: string, args: Record<string, unknown>): Promise<unknown> {
+  private async executePostgres(query: string, params: ToolParam[], args: Record<string, unknown>): Promise<unknown> {
     const pgMod = await tryImport('pg', 'pg') as {
       default: { Pool: new (opts: unknown) => { query: (sql: string, vals: unknown[]) => Promise<{ rows: unknown[] }>; end: () => Promise<void> } };
     };
@@ -97,8 +100,11 @@ export class DatabaseExecutor implements IToolExecutor {
     });
 
     try {
-      const { sql, values } = this.resolveNamedParams(query, args, 'postgres');
+      const { sql, values } = this.resolveNamedParams(query, args, params, 'postgres');
+      console.log('[liran] query:', sql);
+      console.log('[liran] params:', values);
       const result = await pool.query(sql, values);
+      console.log('[liran] rows returned:', result.rows.length);
       return result.rows;
     } catch (err) {
       throw new ToolError(
@@ -109,7 +115,7 @@ export class DatabaseExecutor implements IToolExecutor {
     }
   }
 
-  private async executeMysql(query: string, args: Record<string, unknown>): Promise<unknown> {
+  private async executeMysql(query: string, params: ToolParam[], args: Record<string, unknown>): Promise<unknown> {
     const mysqlMod = await tryImport('mysql2/promise', 'mysql2') as {
       default: {
         createConnection: (opts: unknown) => Promise<{
@@ -129,8 +135,11 @@ export class DatabaseExecutor implements IToolExecutor {
     });
 
     try {
-      const { sql, values } = this.resolveNamedParams(query, args, 'mysql');
+      const { sql, values } = this.resolveNamedParams(query, args, params, 'mysql');
+      console.log('[liran] query:', sql);
+      console.log('[liran] params:', values);
       const [rows] = await connection.execute(sql, values);
+      console.log('[liran] rows returned:', (rows as unknown[]).length);
       return rows;
     } catch (err) {
       throw new ToolError(
@@ -141,7 +150,7 @@ export class DatabaseExecutor implements IToolExecutor {
     }
   }
 
-  private async executeSqlite(query: string, args: Record<string, unknown>): Promise<unknown> {
+  private async executeSqlite(query: string, params: ToolParam[], args: Record<string, unknown>): Promise<unknown> {
     const sqliteMod = await tryImport('better-sqlite3', 'better-sqlite3') as {
       default: new (path: string) => {
         prepare: (sql: string) => { all: (...vals: unknown[]) => unknown[] };
@@ -157,9 +166,13 @@ export class DatabaseExecutor implements IToolExecutor {
     const db = new sqliteMod.default(dbPath);
 
     try {
-      const { sql, values } = this.resolveNamedParams(query, args, 'sqlite');
+      const { sql, values } = this.resolveNamedParams(query, args, params, 'sqlite');
+      console.log('[liran] query:', sql);
+      console.log('[liran] params:', values);
       const stmt = db.prepare(sql);
-      return stmt.all(...values);
+      const rows = stmt.all(...values);
+      console.log('[liran] rows returned:', rows.length);
+      return rows;
     } catch (err) {
       throw new ToolError(
         `SQLite query failed: ${err instanceof Error ? err.message : String(err)}`,

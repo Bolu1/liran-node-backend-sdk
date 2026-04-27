@@ -18,6 +18,7 @@ export interface ToolParam {
   type: ParamType;
   description: string;
   required: boolean;
+  default?: string | number | boolean;
 }
 
 export interface ToolDefinition {

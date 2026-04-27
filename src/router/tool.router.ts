@@ -60,6 +60,7 @@ export class ToolRouter {
       throw new ToolError(`Tool "${toolName}" is not defined in the config`);
     }
 
+    console.log(`[liran] tool resolved: "${toolName}" args:`, args);
     const raw = await this.executor.execute(tool, args);
 
     return this.filterFields(raw, tool);
