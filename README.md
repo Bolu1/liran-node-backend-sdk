@@ -35,7 +35,7 @@ An on-premise, plug-and-play natural language interface for Node.js applications
 ## Installation
 
 ```bash
-npm install liran
+npm install liran-backend-sdk
 ```
 
 TypeScript types are included by default.
@@ -94,7 +94,7 @@ tools:
 **2. Download the model**
 
 ```bash
-npx liran install
+npx liran-backend-sdk install
 ```
 
 **3. Use in your application**
@@ -102,7 +102,7 @@ npx liran install
 Liran has two response modes — both work with every connection type (database, REST API, GraphQL, function):
 
 ```typescript
-import { LiranSDK } from 'liran';
+import { LiranSDK } from 'liran-backend-sdk';
 
 const sdk = new LiranSDK();
 ```
@@ -482,7 +482,7 @@ If the user greets the assistant or asks something unrelated to any tool, the LL
 ### `LiranSDK`
 
 ```typescript
-import { LiranSDK } from 'liran';
+import { LiranSDK } from 'liran-backend-sdk';
 ```
 
 #### Constructor
@@ -667,7 +667,7 @@ liran models
 
 ```typescript
 import express from 'express';
-import { LiranSDK } from 'liran';
+import { LiranSDK } from 'liran-backend-sdk';
 
 const app = express();
 app.use(express.json());
@@ -711,7 +711,7 @@ app.get('/chat/stream', async (req, res) => {
 ### Function Connection with Custom Logic
 
 ```typescript
-import { LiranSDK } from 'liran';
+import { LiranSDK } from 'liran-backend-sdk';
 import { OrderService } from './services/orders.js';
 
 const sdk = new LiranSDK();
@@ -776,7 +776,7 @@ npm install dotenv
 
 ```typescript
 import 'dotenv/config';   // must be first import
-import { LiranSDK } from 'liran';
+import { LiranSDK } from 'liran-backend-sdk';
 ```
 
 ---
@@ -851,9 +851,9 @@ A: The LLM responds conversationally without calling a tool. Greetings, off-topi
 
 A: Yes. The package ships compiled JS. Import normally:
 ```js
-import { LiranSDK } from 'liran';
+import { LiranSDK } from 'liran-backend-sdk';
 // or
-const { LiranSDK } = await import('liran'); // from CJS
+const { LiranSDK } = await import('liran-backend-sdk'); // from CJS
 ```
 
 **Q: Is there a limit to how many tools I can define?**

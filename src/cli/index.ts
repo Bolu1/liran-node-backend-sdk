@@ -16,7 +16,7 @@ async function main(): Promise<void> {
       break;
 
     default:
-      console.log('Liran CLI\n');
+      console.log('liran-backend-sdk CLI\n');
       console.log('Commands:');
       console.log('  liran install [config]   Download the model specified in liran.yaml');
       console.log('  liran models             List available models and active selection');
