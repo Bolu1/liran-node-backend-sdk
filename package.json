@@ -1,7 +1,7 @@
 {
   "name": "liran",
   "version": "1.0.0",
-  "description": "An on-premise plug and play natural language interface",
+  "description": "An on-premise, plug-and-play natural language interface for Node.js applications",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -21,16 +21,31 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Bolu1/liran.git"
+    "url": "git+https://github.com/Bolu1/liran-node-backend-sdk.git"
   },
-  "keywords": [],
+  "keywords": [
+    "llm",
+    "natural-language",
+    "on-premise",
+    "local-ai",
+    "nlp",
+    "tool-calling",
+    "database",
+    "rest-api",
+    "graphql",
+    "node-llama-cpp",
+    "gguf",
+    "ai-sdk",
+    "conversational-ai",
+    "role-based-access"
+  ],
   "author": "Bolu boluadetifa@gmail.com",
   "license": "MIT",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/Bolu1/liran/issues"
+    "url": "https://github.com/Bolu1/liran-node-backend-sdk/issues"
   },
-  "homepage": "https://github.com/Bolu1/liran#readme",
+  "homepage": "https://github.com/Bolu1/liran-node-backend-sdk#readme",
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/jest": "^30.0.0",
