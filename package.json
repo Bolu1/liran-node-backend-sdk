@@ -1,5 +1,5 @@
 {
-  "name": "liran",
+  "name": "liran-backend-sdk",
   "version": "1.0.0",
   "description": "An on-premise, plug-and-play natural language interface for Node.js applications",
   "main": "./dist/index.js",
