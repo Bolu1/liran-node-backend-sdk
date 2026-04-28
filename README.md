@@ -99,11 +99,17 @@ npx liran install
 
 **3. Use in your application**
 
+Liran has two response modes — both work with every connection type (database, REST API, GraphQL, function):
+
 ```typescript
 import { LiranSDK } from 'liran';
 
 const sdk = new LiranSDK();
+```
 
+**`sdk.chat()`** — returns the full response as a string once complete:
+
+```typescript
 const response = await sdk.chat({
   message: "Which products have less than 10 units left?",
   sessionId: "session-abc",
@@ -113,6 +119,19 @@ const response = await sdk.chat({
 
 console.log(response);
 // "There are 3 products with less than 10 units: Widget A (5), Gadget B (2), and Part C (8)."
+```
+
+**`sdk.chatStream()`** — streams the response token by token as it's generated:
+
+```typescript
+for await (const token of sdk.chatStream({
+  message: "Which products have less than 10 units left?",
+  sessionId: "session-abc",
+  userId: "user-123",
+  role: "admin"
+})) {
+  process.stdout.write(token);
+}
 ```
 
 ---
@@ -232,6 +251,23 @@ const sdk = new LiranSDK();
 sdk.registerTool('get_user', async (args) => {
   return await db.users.findById(args.user_id);
 });
+```
+
+You can also pass an existing function or method reference directly — no wrapper needed as long as it accepts an `args` object:
+
+```typescript
+// Existing service method
+async function getUser({ user_id }: Record<string, unknown>) {
+  return await db.users.findById(user_id);
+}
+
+sdk.registerTool('get_user', getUser); // pass reference directly
+```
+
+```typescript
+// Existing class method
+sdk.registerTool('get_user', userService.getUser.bind(userService));
+sdk.registerTool('get_order', ({ order_id }) => orderService.findById(order_id));
 ```
 
 > All tools listed in the config must have a registered handler before `sdk.chat()` is called.
@@ -471,6 +507,22 @@ sdk.registerTool('send_email', async (args) => {
 });
 ```
 
+Pass existing functions or methods directly — no need to redefine them inline:
+
+```typescript
+// Destructured args — pass reference directly
+async function getUser({ user_id }: Record<string, unknown>) {
+  return await db.users.findById(user_id);
+}
+sdk.registerTool('get_user', getUser);
+
+// Class method
+sdk.registerTool('get_order', orderService.getOrder.bind(orderService));
+
+// One-liner adapter for functions with positional params
+sdk.registerTool('get_order', ({ order_id }) => orderService.findById(order_id));
+```
+
 | Param | Type | Description |
 |-------|------|-------------|
 | `name` | `string` | Tool name — must match name in `liran.yaml` |
@@ -665,21 +717,19 @@ import { OrderService } from './services/orders.js';
 const sdk = new LiranSDK();
 const orders = new OrderService();
 
-sdk.registerTool('get_order', async (args) => {
-  return await orders.findById(String(args.order_id));
-});
+// Pass existing methods directly
+sdk.registerTool('get_order', ({ order_id }) => orders.findById(String(order_id)));
+sdk.registerTool('cancel_order', ({ order_id }) => orders.cancel(String(order_id)));
 
-sdk.registerTool('cancel_order', async (args) => {
-  await orders.cancel(String(args.order_id));
-  return { cancelled: true };
-});
-
-const response = await sdk.chat({
+// Stream the response token by token
+for await (const token of sdk.chatStream({
   message: "Cancel order #1042",
   sessionId: "session-1",
   userId: "staff-99",
   role: "support"
-});
+})) {
+  process.stdout.write(token);
+}
 ```
 
 ### Multi-role Setup
